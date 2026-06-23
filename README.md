@@ -1,142 +1,154 @@
-# 🏐 S Pen Placar — Placar de Vôlei para Android
+# 🏐 S Pen Placar — Placar de Vôlei + Gestão de Times
 
 Aplicativo Android nativo (Kotlin + Jetpack Compose) para controle de placar de
-partidas de vôlei, otimizado para **velocidade de operação** em jogos amadores e
-campeonatos locais, com **controle remoto pela S Pen** do Galaxy S24 Ultra.
+vôlei, **controle remoto pela S Pen** (Galaxy S24 Ultra), **cadastro de
+jogadores**, **sorteio de times balanceados** e **sincronização na nuvem
+(Supabase)**. Foco em velocidade de operação durante jogos amadores e rachas.
 
 ---
 
 ## ✨ Funcionalidades
 
-- **Dois times (A e B)** com nomes editáveis (toque no nome).
-- **Placar gigante** e legível à distância, com escala responsiva (celular/tablet).
-- **+1 / -1** por equipe — o painel inteiro é tocável para somar ponto (rápido).
-- **Regras automáticas de vôlei**: 25 pontos com diferença mínima de 2;
-  **tie-break até 15**; partida em **melhor de 5 sets**.
-- **Sets vencidos** exibidos como “pips” sob o nome de cada time.
-- **Desfazer** a última ação (pilha de estados).
-- **Histórico de pontos** da partida atual (bottom sheet).
-- **Cronômetro** da partida (inicia automático no 1º ponto; play/pause manual).
-- **Tema claro / escuro / sistema** (Material 3 + cores dinâmicas no Android 12+).
-- **Histórico de partidas** salvas (Room).
-- **Compartilhar resultado** (Intent de compartilhamento do Android).
-- **Espelhamento em TV via Chromecast** (botão de Cast na barra superior).
-- **Sons e vibração** ao registrar pontos / sets / fim de jogo (configuráveis).
+### Placar
+- **Dois times (A e B)** com nomes editáveis, layout premium minimalista.
+- **Placar gigante** responsivo (celular/tablet), número animado.
+- **+1 / -1** por equipe; toque no card inteiro = +1 (operação rápida).
+- **Regras automáticas**: 25 pontos com diferença de 2; **tie-break a 15**;
+  **melhor de 5 sets**. Encerramento automático de set/partida.
+- **Sets vencidos** (pips) e **placar dos sets** já encerrados.
+- **Desfazer**, **histórico de pontos** da partida, **cronômetro**.
+- **Tema claro/escuro** (paleta controlada estilo Apple/Stripe).
+- **Som distinto por equipe** (grave p/ A, agudo p/ B), **vibração**.
+- **Tela de vitória** com troféu e **confete**.
 
-### 🖊️ Comandos da S Pen
-| Gesto no botão da S Pen | Ação |
+### S Pen (Galaxy)
+| Gesto no botão | Ação |
 |---|---|
-| Clique simples | +1 ponto para o **Time A** |
-| Clique duplo | +1 ponto para o **Time B** |
-| Pressionar e segurar | **Desfazer** última ação |
+| Clique simples | +1 Time A |
+| Clique duplo | +1 Time B |
+| Pressionar e segurar | Desfazer |
 
-Um **indicador visual** aparece no centro da tela a cada comando recebido.
+O card afetado é **realçado** e um indicador aparece a cada comando.
+
+### Jogadores e times
+- **Cadastro** com 5 habilidades (Saque, Recepção, Levantamento, Corte,
+  Movimentação), cada uma em **Básico / Intermediário / Avançado**.
+- **Importar CSV** (menu ⋮). Colunas: `Jogador, Saque, Recepção, Levantamento,
+  Corte, Movimentação` (com/sem cabeçalho, separador `,` ou `;`, tolera acentos
+  e abreviações). **Ignora nomes já existentes** (sem duplicar).
+- **Seleção de presentes** com contador e remoção em massa.
+- **Sorteio de times balanceados** (2 a 6 times), divisão igualitária com
+  **rodízio** para as sobras. Algoritmo LPT equilibra o nível dos times.
+- **Restrições**: pares que **não podem** ficar no mesmo time.
+- **Níveis ocultos** no resultado (revelados por um ícone de info).
+- **"Usar no placar"**: leva os 2 times para o placar (com elenco).
+- **Evolução do jogador**: histórico de melhoras/quedas por habilidade (↑/↓).
+
+### Nuvem (Supabase)
+- **Partidas** e **sorteios** são salvos automaticamente / sob demanda.
+- **Jogadores** sincronizam (sobe ao editar/importar; desce ao abrir/atualizar).
+- **Histórico de partidas** puxa da nuvem, com indicador de carregamento.
 
 ---
 
-## 🏗️ Arquitetura
-
-Padrão **MVVM** com camadas bem separadas:
+## 🏗️ Arquitetura (MVVM)
 
 ```
 com.spen.placar
-├── domain/            # Regras puras do vôlei (testáveis, sem Android)
-│   ├── Models.kt          # MatchState, MatchConfig, TeamSide, ScoreEvent...
-│   └── ScoreEngine.kt     # Motor de pontuação (add/fechar set/fim de jogo)
+├── domain/            # Regras puras: ScoreEngine, SkillLevel, TeamBalancer
 ├── data/
-│   ├── local/         # Room: MatchEntity, MatchDao, PlacarDatabase
-│   ├── repository/    # MatchRepository (histórico de partidas)
-│   └── prefs/         # SettingsRepository (DataStore: tema/som/vibração/spen)
-├── spen/              # SpenButtonDetector (gestos) + SpenManager (SDK Samsung)
-├── cast/              # CastOptionsProvider (Chromecast)
-├── util/              # Formatters, FeedbackPlayer (som/vibração)
+│   ├── local/         # Room: Match, Player, PlayerConstraint, PlayerHistory + DAOs
+│   ├── remote/        # SupabaseRemote (PostgREST via HttpURLConnection)
+│   ├── repository/    # MatchRepository, PlayerRepository
+│   └── prefs/         # SettingsRepository (DataStore)
+├── spen/              # SpenButtonDetector + SpenManager (SDK Samsung por reflexão)
+├── cast/              # CastOptionsProvider (Chromecast — botão removido da UI)
+├── util/              # Formatters, FeedbackPlayer, CsvPlayers
 ├── ui/
-│   ├── theme/         # Material 3 (cores, tipografia, tema claro/escuro)
-│   ├── scoreboard/    # ScoreboardViewModel, ScoreboardScreen + componentes
-│   └── history/       # HistoryScreen (partidas salvas)
-├── MainActivity.kt    # Activity única (Compose) + init S Pen / Cast
-└── PlacarApplication.kt # Service locator (repositórios)
+│   ├── theme/         # Material 3 (cores, tipografia, tema)
+│   ├── scoreboard/    # ScoreboardViewModel + tela + componentes
+│   ├── players/       # PlayersViewModel + telas de jogadores/sorteio/evolução
+│   └── history/       # HistoryScreen
+├── MainActivity.kt    # Activity única (Compose) + S Pen
+└── PlacarApplication.kt # Service locator (repositórios + SupabaseRemote)
 ```
 
-- **ViewModel** (`ScoreboardViewModel`) concentra todo o estado: partida, undo,
-  histórico, cronômetro, efeitos e persistência.
-- **Estado imutável** (`MatchState`) — cada ponto gera um novo estado, o que
-  torna o **desfazer** trivial (pilha de snapshots).
-- **Persistência**: Room (histórico de partidas) + DataStore (preferências).
+- **Estado imutável** (`MatchState`) → desfazer trivial (pilha de snapshots).
+- **Persistência**: Room (offline) + Supabase (nuvem) + DataStore (preferências).
 
 ---
 
 ## ▶️ Como compilar
 
-Pré-requisitos: **Android Studio Ladybug+** e **JDK 17**.
+Pré-requisitos: **JDK 17** e **Android SDK** (API 34).
 
-1. Abra a pasta do projeto no Android Studio (ele baixará o Gradle 8.9 e as deps).
-2. Caso vá compilar pela linha de comando e o wrapper não exista, gere-o:
-   ```bash
-   gradle wrapper --gradle-version 8.9
-   ./gradlew assembleDebug          # Windows: gradlew.bat assembleDebug
-   ```
-3. Rode em um dispositivo/emulador com **Android 8.0 (API 26)** ou superior.
+```bash
+# Windows
+.\gradlew.bat assembleDebug
+# Linux/macOS
+./gradlew assembleDebug
+```
 
-> O arquivo `local.properties` (com `sdk.dir`) é gerado automaticamente pelo
-> Android Studio. Não o versione.
+APK em `app/build/outputs/apk/debug/app-debug.apk`.
+
+> O `JAVA_HOME` precisa apontar para um **JDK 17**. O `local.properties`
+> (com `sdk.dir` e as chaves do Supabase) é gerado/editado localmente e **não
+> vai para o git**.
 
 ### Testes
 ```bash
-./gradlew test      # testes unitários do motor de regras (ScoreEngineTest)
+./gradlew test    # ScoreEngineTest, TeamBalancerTest
 ```
 
 ---
 
-## 🖊️ Habilitando a S Pen no dispositivo
+## 🖊️ Habilitar a S Pen
 
-A integração usa o **Samsung S Pen Remote SDK**
-(`com.samsung.android.sdk.penremote`), distribuído como AAR proprietário e que
-**não está no Maven Central**.
+A integração usa o **Samsung S Pen Remote SDK** (`spenremote-v1.0.1.jar`),
+distribuído pela Samsung (login gratuito). O projeto compila sem ele (a S Pen
+fica inativa, os botões na tela funcionam normalmente).
 
-Para que o projeto **compile em qualquer máquina**, a ligação com o SDK é feita
-por **reflexão** em `SpenManager.kt`: se o SDK estiver presente em tempo de
-execução, o controle por S Pen é ativado automaticamente; caso contrário, o app
-funciona normalmente pelos botões na tela (`isAvailable = false`).
+1. Baixe o SDK em https://developer.samsung.com/galaxy-spen-remote/download.html
+2. Extraia e copie o `.jar` para `app/libs/` (o Gradle inclui automaticamente).
+3. Recompile. No dispositivo, pareie a S Pen por Bluetooth.
 
-Para ativar de fato no Galaxy S24 Ultra:
-
-1. Baixe o **Pen Remote SDK** no [Samsung Developers](https://developer.samsung.com/galaxy-spen-remote).
-2. Copie o `.aar` para `app/libs/`.
-3. Adicione em `app/build.gradle.kts`:
-   ```kotlin
-   implementation(files("libs/spenremote-vX.Y.Z.aar"))
-   ```
-4. Reinstale o app. A lógica de gestos (clique/duplo/segurar) já está pronta em
-   `SpenButtonDetector.kt` — basta o SDK entregar os eventos de botão.
+> Importante: o SDK exige um **contexto de Activity** em `connect()` — já tratado
+> no `SpenManager`.
 
 ---
 
-## 📺 Chromecast
+## ☁️ Supabase
 
-O `CastOptionsProvider` usa o **Default Media Receiver** (`CC1AD845`) para
-desenvolvimento. Para um receiver que renderize o placar em tela cheia na TV,
-registre seu **App ID** no [Cast SDK Developer Console](https://cast.google.com/publish)
-e substitua `cast_app_id` em `app/build.gradle.kts`.
+Configuração em `local.properties` (fora do git):
+
+```properties
+SUPABASE_URL=https://<project-id>.supabase.co
+SUPABASE_ANON_KEY=sb_publishable_xxx   # SOMENTE a publishable key
+```
+
+Expostas via `BuildConfig`. **Nunca** coloque a *secret key* no app.
+
+### Tabelas (criadas no banco)
+- `matches` — partidas (times, sets, vencedor, duração, `players_a/b`).
+- `team_draws` — sorteios (times em `jsonb`, rodízio).
+- `players` — jogadores (nome único, 5 habilidades).
+
+Todas com **RLS** e política para a publishable key. Para criar/ajustar o
+schema, rode o SQL equivalente no **SQL Editor** do Supabase (ou via conexão
+direta com o Postgres).
+
+> O **histórico de evolução** (`player_history`) é **local** (Room). Pode ser
+> sincronizado na nuvem futuramente.
 
 ---
 
 ## ⚙️ Regras configuráveis
 
-As regras ficam em `MatchConfig` (em `domain/Models.kt`) e podem ser ajustadas:
-
-```kotlin
-MatchConfig(
-    pointsPerSet = 25,
-    tieBreakPoints = 15,
-    minLead = 2,
-    setsToWin = 3,   // melhor de 5
-    maxSets = 5
-)
-```
+Em `domain/Models.kt` (`MatchConfig`): pontos por set, tie-break, diferença
+mínima, sets para vencer.
 
 ---
 
 ## 📄 Licença
 
-Projeto de exemplo — use livremente como base para seus próprios apps.
+Projeto de exemplo — use livremente como base.
