@@ -363,7 +363,7 @@ class ScoreboardViewModel(
             val name = if (it == TeamSide.A) s.teamAName else s.teamBName
             sb.append("Vencedor: $name 🏆\n")
         }
-        sb.append("— S Pen Placar")
+        sb.append("Liga das Nações Femininas 2029")
         return sb.toString()
     }
 

@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.GroupAdd
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Timeline
@@ -73,6 +75,7 @@ fun PlayersScreen(
     val teams by viewModel.teams.collectAsStateWithLifecycle()
     val constraints by viewModel.constraints.collectAsStateWithLifecycle()
     val syncing by viewModel.syncing.collectAsStateWithLifecycle()
+    val unlocked by SkillGate.unlocked.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var editTarget by remember { mutableStateOf<PlayerEntity?>(null) }
@@ -83,6 +86,7 @@ fun PlayersScreen(
     var historyTarget by remember { mutableStateOf<PlayerEntity?>(null) }
     var showListSelect by remember { mutableStateOf(false) }
     var notFoundNames by remember { mutableStateOf<List<String>>(emptyList()) }
+    var showUnlock by remember { mutableStateOf(false) }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -122,6 +126,16 @@ fun PlayersScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        if (unlocked) SkillGate.lock() else showUnlock = true
+                    }) {
+                        Icon(
+                            if (unlocked) Icons.Filled.LockOpen else Icons.Filled.Lock,
+                            contentDescription = if (unlocked) "Bloquear habilidades" else "Desbloquear habilidades",
+                            tint = if (unlocked) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     if (presentCount > 0) {
                         IconButton(onClick = { showBulkDelete = true }) {
                             Icon(
@@ -240,9 +254,10 @@ fun PlayersScreen(
                     items(players, key = { it.id }) { player ->
                         PlayerRow(
                             player = player,
+                            unlocked = unlocked,
                             onTogglePresent = { viewModel.togglePresent(player) },
                             onEdit = { editTarget = player; showEditor = true },
-                            onHistory = { historyTarget = player },
+                            onHistory = { if (unlocked) historyTarget = player else showUnlock = true },
                             onDelete = { viewModel.delete(player.id) }
                         )
                     }
@@ -265,6 +280,7 @@ fun PlayersScreen(
             players = players,
             constraints = constraints,
             teams = teams,
+            unlocked = unlocked,
             onDraw = { count, mode -> viewModel.draw(count, mode) },
             onAddConstraint = { a, b -> viewModel.addConstraint(a, b) },
             onRemoveConstraint = { viewModel.removeConstraint(it) },
@@ -292,6 +308,20 @@ fun PlayersScreen(
             player = player,
             viewModel = viewModel,
             onDismiss = { historyTarget = null }
+        )
+    }
+
+    if (showUnlock) {
+        UnlockDialog(
+            onDismiss = { showUnlock = false },
+            onConfirm = { pw ->
+                if (SkillGate.tryUnlock(pw)) {
+                    showUnlock = false
+                    Toast.makeText(context, "Habilidades desbloqueadas", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Senha incorreta", Toast.LENGTH_SHORT).show()
+                }
+            }
         )
     }
 
@@ -360,6 +390,7 @@ fun PlayersScreen(
 @Composable
 private fun PlayerRow(
     player: PlayerEntity,
+    unlocked: Boolean,
     onTogglePresent: () -> Unit,
     onEdit: () -> Unit,
     onHistory: () -> Unit,
@@ -379,13 +410,15 @@ private fun PlayerRow(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(player.name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                    Text(
-                        "  ·  ${player.total}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                    if (unlocked) {
+                        Text(
+                            "  ·  ${player.total}",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
                 }
-                SkillChips(player)
+                SkillChips(player, unlocked)
             }
             IconButton(onClick = onHistory) {
                 Icon(Icons.Filled.Timeline, contentDescription = "Evolução", tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -401,7 +434,26 @@ private fun PlayerRow(
 }
 
 @Composable
-private fun SkillChips(player: PlayerEntity) {
+private fun SkillChips(player: PlayerEntity, unlocked: Boolean) {
+    if (!unlocked) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(top = 6.dp)
+        ) {
+            Icon(
+                Icons.Filled.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(12.dp)
+            )
+            Text(
+                "  Habilidades ocultas",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        return
+    }
     val levels = player.levels
     Row(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -424,6 +476,36 @@ private fun SkillChips(player: PlayerEntity) {
             }
         }
     }
+}
+
+@Composable
+private fun UnlockDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var pw by remember { mutableStateOf("") }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Desbloquear habilidades") },
+        text = {
+            androidx.compose.material3.OutlinedTextField(
+                value = pw,
+                onValueChange = { pw = it },
+                label = { Text("Senha") },
+                singleLine = true,
+                visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Password
+                )
+            )
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                enabled = pw.isNotBlank(),
+                onClick = { onConfirm(pw) }
+            ) { Text("Desbloquear") }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
 }
 
 @Composable

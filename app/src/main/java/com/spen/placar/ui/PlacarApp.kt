@@ -112,7 +112,7 @@ fun PlacarApp(
                     onShare = { match ->
                         val text = "🏐 ${match.teamAName} ${match.setsA} x ${match.setsB} " +
                             "${match.teamBName}\nSets: ${match.scoreSummary}\n" +
-                            "Vencedor: ${match.winnerName} 🏆\n— S Pen Placar"
+                            "Vencedor: ${match.winnerName} 🏆\nLiga das Nações Femininas 2029"
                         shareText(context, text)
                     }
                 )

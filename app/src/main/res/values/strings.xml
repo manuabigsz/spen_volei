@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">S Pen Placar</string>
+    <!-- Nome completo: Training for the Women's VNL · exibição: twvnl -->
+    <string name="app_name">twvnl</string>
+    <string name="app_full_name">Training for the Women\'s VNL</string>
 
     <!-- Times -->
     <string name="team_a_default">Time A</string>
@@ -41,5 +43,5 @@
     <string name="spen_enabled">Controle por S Pen</string>
 
     <!-- Cast -->
-    <string name="cast_app_name">S Pen Placar</string>
+    <string name="cast_app_name">twvnl</string>
 </resources>

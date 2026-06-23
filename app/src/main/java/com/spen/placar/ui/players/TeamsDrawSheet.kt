@@ -56,6 +56,7 @@ fun TeamsDrawSheet(
     players: List<PlayerEntity>,
     constraints: List<PlayerConstraintEntity>,
     teams: BalancedTeams<PlayerEntity>?,
+    unlocked: Boolean,
     onDraw: (Int, BalanceMode) -> Unit,
     onAddConstraint: (Long, Long) -> Unit,
     onRemoveConstraint: (Long) -> Unit,
@@ -173,17 +174,19 @@ fun TeamsDrawSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Times", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    IconButton(onClick = { showLevels = !showLevels }) {
-                        Icon(
-                            Icons.Outlined.Info,
-                            contentDescription = if (showLevels) "Ocultar níveis" else "Ver níveis",
-                            tint = if (showLevels) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    if (unlocked) {
+                        IconButton(onClick = { showLevels = !showLevels }) {
+                            Icon(
+                                Icons.Outlined.Info,
+                                contentDescription = if (showLevels) "Ocultar níveis" else "Ver níveis",
+                                tint = if (showLevels) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 result.teams.forEachIndexed { index, team ->
-                    TeamCard(index = index, players = team, showLevels = showLevels)
+                    TeamCard(index = index, players = team, showLevels = showLevels && unlocked)
                 }
                 if (result.bench.isNotEmpty()) {
                     BenchCard(result.bench)
@@ -436,6 +439,6 @@ private fun buildShareText(result: BalancedTeams<PlayerEntity>): String {
     if (result.bench.isNotEmpty()) {
         sb.append("Rodízio: ${result.bench.joinToString(", ") { it.name }}\n")
     }
-    sb.append("— S Pen Placar")
+    sb.append("Liga das Nações Femininas 2029")
     return sb.toString()
 }

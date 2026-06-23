@@ -4,14 +4,28 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Bola de vôlei estilizada -->
-    <group android:scaleX="1.2" android:scaleY="1.2" android:pivotX="54" android:pivotY="54">
+
+    <!-- Bola de vôlei branca centralizada -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,28 a26,26 0 1 0 0.01,0 z" />
+
+    <!-- Costuras (seams) em roxo -->
+    <group>
         <path
-            android:fillColor="#FFD54F"
-            android:pathData="M54,30a24,24 0,1 0,0.01 0z" />
+            android:strokeColor="#7C3AED"
+            android:strokeWidth="3"
+            android:strokeLineCap="round"
+            android:pathData="M54,28 C42,42 42,66 54,80" />
         <path
-            android:strokeColor="#0E1116"
-            android:strokeWidth="2.5"
-            android:pathData="M54,30 C44,42 44,66 54,78 M40,38 C52,48 64,52 76,50 M40,70 C52,60 64,56 76,58" />
+            android:strokeColor="#7C3AED"
+            android:strokeWidth="3"
+            android:strokeLineCap="round"
+            android:pathData="M54,28 C66,42 66,66 54,80" />
+        <path
+            android:strokeColor="#7C3AED"
+            android:strokeWidth="3"
+            android:strokeLineCap="round"
+            android:pathData="M30,50 C46,58 68,58 82,48" />
     </group>
 </vector>
