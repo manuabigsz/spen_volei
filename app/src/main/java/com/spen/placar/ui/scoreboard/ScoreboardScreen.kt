@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -92,6 +93,7 @@ fun ScoreboardScreen(
     onEditName: (TeamSide, String) -> Unit,
     onShare: () -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenPlayers: () -> Unit,
     onSpenConsumed: () -> Unit,
     onSetTheme: (ThemeMode) -> Unit,
     onSetSound: (Boolean) -> Unit,
@@ -163,6 +165,9 @@ fun ScoreboardScreen(
                         shadowElevation = 8.dp,
                         modifier = Modifier.width(244.dp)
                     ) {
+                        PrettyMenuItem("Jogadores e times", Icons.Filled.Groups) {
+                            menuOpen = false; onOpenPlayers()
+                        }
                         PrettyMenuItem("Histórico de pontos", Icons.AutoMirrored.Filled.List) {
                             menuOpen = false; showPointHistory = true
                         }

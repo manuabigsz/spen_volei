@@ -7,10 +7,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.spen.placar.PlacarApplication
 import com.spen.placar.ui.history.HistoryScreen
+import com.spen.placar.ui.players.PlayersScreen
+import com.spen.placar.ui.players.PlayersViewModel
 import com.spen.placar.ui.scoreboard.ScoreboardScreen
 import com.spen.placar.ui.scoreboard.ScoreboardViewModel
 import com.spen.placar.ui.theme.SPenPlacarTheme
@@ -71,6 +75,7 @@ fun PlacarApp(
                     onEditName = viewModel::setTeamName,
                     onShare = { shareText(context, viewModel.shareText()) },
                     onOpenHistory = { navController.navigate("history") },
+                    onOpenPlayers = { navController.navigate("players") },
                     onSpenConsumed = viewModel::consumeSpenFeedback,
                     onSetTheme = viewModel::setTheme,
                     onSetSound = viewModel::setSound,
@@ -89,6 +94,16 @@ fun PlacarApp(
                             "Vencedor: ${match.winnerName} 🏆\n— S Pen Placar"
                         shareText(context, text)
                     }
+                )
+            }
+            composable("players") {
+                val app = context.applicationContext as PlacarApplication
+                val playersViewModel: PlayersViewModel = viewModel(
+                    factory = PlayersViewModel.Factory(app.playerRepository)
+                )
+                PlayersScreen(
+                    viewModel = playersViewModel,
+                    onBack = { navController.popBackStack() }
                 )
             }
         }
