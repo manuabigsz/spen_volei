@@ -111,7 +111,7 @@ class ScoreboardViewModel(
     //  Ações de pontuação
     // =======================================================================
 
-    fun addPoint(side: TeamSide) {
+    fun addPoint(side: TeamSide, ace: Boolean = false) {
         val current = _match.value
         if (current.finished) return
 
@@ -127,7 +127,9 @@ class ScoreboardViewModel(
         appendHistory(side, updated, closedSet)
 
         // Efeitos
-        viewModelScope.launch { _effects.emit(MatchEffect.PointScored(side)) }
+        viewModelScope.launch {
+            _effects.emit(if (ace) MatchEffect.Ace(side) else MatchEffect.PointScored(side))
+        }
         if (closedSet) {
             val lastSet = updated.completedSets.last()
             viewModelScope.launch {
@@ -137,8 +139,31 @@ class ScoreboardViewModel(
         if (updated.finished && updated.winner != null) {
             stopTimer()
             viewModelScope.launch { _effects.emit(MatchEffect.MatchWon(updated.winner)) }
+            val wName = if (updated.winner == TeamSide.A) updated.teamAName else updated.teamBName
+            announce("Fim de jogo! $wName venceu!")
             persistFinishedMatch(updated)
+        } else {
+            val sp = updated.setPointSide
+            if (sp != null && current.setPointSide != sp) {
+                // Set point / match point ao entrar nesse estado.
+                val name = if (sp == TeamSide.A) updated.teamAName else updated.teamBName
+                announce(if (updated.matchPoint) "$name está quase ganhando!" else "Set point para $name")
+                viewModelScope.launch { _effects.emit(MatchEffect.SetPoint(updated.matchPoint)) }
+            } else {
+                // A cada 5 pontos do time que marcou, anuncia o placar completo.
+                val justScored = if (side == TeamSide.A) updated.pointsA else updated.pointsB
+                if (justScored > 0 && justScored % 5 == 0) {
+                    announce(
+                        "${updated.pointsA} pontos para ${updated.teamAName}, " +
+                            "e ${updated.pointsB} para ${updated.teamBName}"
+                    )
+                }
+            }
         }
+    }
+
+    private fun announce(text: String) {
+        viewModelScope.launch { _effects.emit(MatchEffect.Announce(text)) }
     }
 
     fun removePoint(side: TeamSide) {
@@ -283,6 +308,11 @@ class ScoreboardViewModel(
     fun setSound(on: Boolean) = viewModelScope.launch { settingsRepository.setSound(on) }
     fun setVibration(on: Boolean) = viewModelScope.launch { settingsRepository.setVibration(on) }
     fun setSpen(on: Boolean) = viewModelScope.launch { settingsRepository.setSpen(on) }
+    fun setVoice(on: Boolean) = viewModelScope.launch { settingsRepository.setVoice(on) }
+    fun setPointSound(side: TeamSide, value: String) = viewModelScope.launch {
+        if (side == TeamSide.A) settingsRepository.setPointSoundA(value)
+        else settingsRepository.setPointSoundB(value)
+    }
 
     // =======================================================================
     //  Persistência

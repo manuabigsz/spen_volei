@@ -58,6 +58,29 @@ data class MatchState(
     /** Alvo de pontos do set atual (15 no tie-break, 25 nos demais). */
     val targetPoints: Int
         get() = if (isTieBreak) config.tieBreakPoints else config.pointsPerSet
+
+    /** true se [side] está a 1 ponto de fechar o set (já com a diferença mínima). */
+    private fun setPointFor(side: TeamSide): Boolean {
+        if (finished) return false
+        val (p, o) = if (side == TeamSide.A) pointsA to pointsB else pointsB to pointsA
+        return (p + 1) >= targetPoints && (p + 1 - o) >= config.minLead
+    }
+
+    /** Equipe em set point (a 1 ponto de vencer o set), ou null. */
+    val setPointSide: TeamSide?
+        get() = when {
+            setPointFor(TeamSide.A) -> TeamSide.A
+            setPointFor(TeamSide.B) -> TeamSide.B
+            else -> null
+        }
+
+    /** O set point atual também é match point (fecha a partida)? */
+    val matchPoint: Boolean
+        get() {
+            val sp = setPointSide ?: return false
+            val sets = if (sp == TeamSide.A) setsA else setsB
+            return sets == config.setsToWin - 1
+        }
 }
 
 /**

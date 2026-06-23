@@ -16,7 +16,12 @@ data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val soundEnabled: Boolean = true,
     val vibrationEnabled: Boolean = true,
-    val spenEnabled: Boolean = true
+    val spenEnabled: Boolean = true,
+    /** Som ao marcar ponto por equipe: "padrao", "nenhum" ou nome de áudio de res/raw. */
+    val pointSoundA: String = "padrao",
+    val pointSoundB: String = "padrao",
+    /** Narração por voz (anúncios de set point / vitória). */
+    val voiceEnabled: Boolean = true
 )
 
 // DataStore singleton vinculado ao Context.
@@ -32,6 +37,9 @@ class SettingsRepository(private val context: Context) {
         val SOUND = booleanPreferencesKey("sound_enabled")
         val VIBRATION = booleanPreferencesKey("vibration_enabled")
         val SPEN = booleanPreferencesKey("spen_enabled")
+        val POINT_SOUND_A = stringPreferencesKey("point_sound_a")
+        val POINT_SOUND_B = stringPreferencesKey("point_sound_b")
+        val VOICE = booleanPreferencesKey("voice_enabled")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { p ->
@@ -40,7 +48,10 @@ class SettingsRepository(private val context: Context) {
                 ?: ThemeMode.SYSTEM,
             soundEnabled = p[Keys.SOUND] ?: true,
             vibrationEnabled = p[Keys.VIBRATION] ?: true,
-            spenEnabled = p[Keys.SPEN] ?: true
+            spenEnabled = p[Keys.SPEN] ?: true,
+            pointSoundA = p[Keys.POINT_SOUND_A] ?: "padrao",
+            pointSoundB = p[Keys.POINT_SOUND_B] ?: "padrao",
+            voiceEnabled = p[Keys.VOICE] ?: true
         )
     }
 
@@ -55,4 +66,13 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setSpen(enabled: Boolean) =
         context.dataStore.edit { it[Keys.SPEN] = enabled }
+
+    suspend fun setPointSoundA(value: String) =
+        context.dataStore.edit { it[Keys.POINT_SOUND_A] = value }
+
+    suspend fun setPointSoundB(value: String) =
+        context.dataStore.edit { it[Keys.POINT_SOUND_B] = value }
+
+    suspend fun setVoice(enabled: Boolean) =
+        context.dataStore.edit { it[Keys.VOICE] = enabled }
 }

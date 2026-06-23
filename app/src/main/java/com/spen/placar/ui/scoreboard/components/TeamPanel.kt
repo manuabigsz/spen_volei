@@ -14,9 +14,11 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,6 +62,7 @@ import com.spen.placar.ui.theme.TeamNameStyle
  * @param highlighted realça o card por alguns instantes (feedback da S Pen).
  * @param setPoints pontos desta equipe nos sets encerrados (placar discreto).
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TeamPanel(
     name: String,
@@ -69,6 +72,7 @@ fun TeamPanel(
     accent: Color,
     highlighted: Boolean,
     onAddPoint: () -> Unit,
+    onAce: () -> Unit,
     onRemovePoint: () -> Unit,
     onEditName: () -> Unit,
     modifier: Modifier = Modifier
@@ -102,7 +106,12 @@ fun TeamPanel(
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surface)
             .border(BorderStroke(borderWidth, borderColor), RoundedCornerShape(16.dp))
-            .clickable(interactionSource = interaction, indication = null, onClick = onAddPoint)
+            .combinedClickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onAddPoint,
+                onLongClick = onAce
+            )
     ) {
         BoxWithConstraints(
             modifier = Modifier

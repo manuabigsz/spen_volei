@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
@@ -56,13 +58,17 @@ fun SettingsDialog(
     onSound: (Boolean) -> Unit,
     onVibration: (Boolean) -> Unit,
     onSpen: (Boolean) -> Unit,
+    onPointSoundA: (String) -> Unit,
+    onPointSoundB: (String) -> Unit,
+    onVoice: (Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val pointPresets = remember { com.spen.placar.util.SoundCatalog.pointPresets() }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Configurações") },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text("Tema", style = androidx.compose.material3.MaterialTheme.typography.titleSmall)
                 ThemeMode.entries.forEach { mode ->
                     Row(
@@ -93,10 +99,54 @@ fun SettingsDialog(
                     checked = settings.spenEnabled,
                     onCheckedChange = onSpen
                 )
+                ToggleRow("Narração por voz", settings.voiceEnabled, onVoice)
+
+                HorizontalDivider(modifier = Modifier.fillMaxWidth())
+                SoundGroup("Som do Time A", settings.pointSoundA, pointPresets, onPointSoundA)
+                SoundGroup("Som do Time B", settings.pointSoundB, pointPresets, onPointSoundB)
+                if (pointPresets.isEmpty()) {
+                    Text(
+                        "Adicione áudios em res/raw para aparecerem aqui.",
+                        style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Fechar") } }
     )
+}
+
+@Composable
+private fun SoundGroup(
+    title: String,
+    current: String,
+    presets: List<com.spen.placar.util.RawSound>,
+    onSelect: (String) -> Unit
+) {
+    Text(
+        title,
+        style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
+        modifier = Modifier.padding(top = 8.dp)
+    )
+    SoundOption("Padrão (bipe)", current == "padrao") { onSelect("padrao") }
+    SoundOption("Nenhum", current == "nenhum") { onSelect("nenhum") }
+    presets.forEach { sound ->
+        SoundOption(sound.name, current == sound.name) { onSelect(sound.name) }
+    }
+}
+
+@Composable
+private fun SoundOption(label: String, selected: Boolean, onSelect: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(selected = selected, onClick = onSelect),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = selected, onClick = onSelect)
+        Text(label)
+    }
 }
 
 @Composable

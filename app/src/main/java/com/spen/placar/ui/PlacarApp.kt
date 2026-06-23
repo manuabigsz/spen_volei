@@ -2,6 +2,7 @@ package com.spen.placar.ui
 
 import android.content.Intent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -34,15 +35,26 @@ fun PlacarApp(
     SPenPlacarTheme(themeMode = settings.themeMode) {
         val context = LocalContext.current
         val feedbackPlayer = remember { FeedbackPlayer(context) }
+        val speaker = remember { com.spen.placar.util.Speaker(context) }
 
-        // Conecta os efeitos pontuais do ViewModel ao som/vibração.
+        DisposableEffect(Unit) {
+            onDispose { speaker.release(); feedbackPlayer.release() }
+        }
+
+        // Conecta os efeitos pontuais do ViewModel ao som/vibração/voz.
         LaunchedEffect(Unit) {
             viewModel.effects.collect { effect ->
-                feedbackPlayer.handle(
-                    effect = effect,
-                    soundEnabled = viewModel.settings.value.soundEnabled,
-                    vibrationEnabled = viewModel.settings.value.vibrationEnabled
-                )
+                if (effect is com.spen.placar.ui.scoreboard.MatchEffect.Announce) {
+                    if (viewModel.settings.value.voiceEnabled) speaker.speak(effect.text)
+                } else {
+                    feedbackPlayer.handle(
+                        effect = effect,
+                        soundEnabled = viewModel.settings.value.soundEnabled,
+                        vibrationEnabled = viewModel.settings.value.vibrationEnabled,
+                        pointSoundA = viewModel.settings.value.pointSoundA,
+                        pointSoundB = viewModel.settings.value.pointSoundB
+                    )
+                }
             }
         }
 
@@ -67,7 +79,10 @@ fun PlacarApp(
                     timerRunning = timerRunning,
                     spenFeedback = spenFeedback,
                     spenAvailable = spenAvailable,
-                    onAddPoint = viewModel::addPoint,
+                    onAddPoint = { viewModel.addPoint(it) },
+                    onAcePoint = { viewModel.addPoint(it, ace = true) },
+                    onWhistle = { feedbackPlayer.playWhistle() },
+                    onPlayAce = { feedbackPlayer.playAce() },
                     onRemovePoint = viewModel::removePoint,
                     onUndo = viewModel::undo,
                     onReset = viewModel::resetMatch,
@@ -80,7 +95,9 @@ fun PlacarApp(
                     onSetTheme = viewModel::setTheme,
                     onSetSound = viewModel::setSound,
                     onSetVibration = viewModel::setVibration,
-                    onSetSpen = viewModel::setSpen
+                    onSetSpen = viewModel::setSpen,
+                    onSetPointSound = viewModel::setPointSound,
+                    onSetVoice = viewModel::setVoice
                 )
             }
             composable("history") {

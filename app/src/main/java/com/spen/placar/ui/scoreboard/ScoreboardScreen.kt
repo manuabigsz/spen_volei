@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Sports
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -49,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -86,6 +89,9 @@ fun ScoreboardScreen(
     spenFeedback: SpenFeedback?,
     spenAvailable: Boolean,
     onAddPoint: (TeamSide) -> Unit,
+    onAcePoint: (TeamSide) -> Unit,
+    onWhistle: () -> Unit,
+    onPlayAce: () -> Unit,
     onRemovePoint: (TeamSide) -> Unit,
     onUndo: () -> Unit,
     onReset: () -> Unit,
@@ -98,7 +104,9 @@ fun ScoreboardScreen(
     onSetTheme: (ThemeMode) -> Unit,
     onSetSound: (Boolean) -> Unit,
     onSetVibration: (Boolean) -> Unit,
-    onSetSpen: (Boolean) -> Unit
+    onSetSpen: (Boolean) -> Unit,
+    onSetPointSound: (TeamSide, String) -> Unit,
+    onSetVoice: (Boolean) -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
@@ -156,6 +164,20 @@ fun ScoreboardScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onWhistle) {
+                        Icon(
+                            Icons.Filled.Sports,
+                            contentDescription = "Apito",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = onPlayAce) {
+                        Icon(
+                            Icons.Filled.Bolt,
+                            contentDescription = "Ace",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     IconButton(onClick = { menuOpen = true }) {
                         Icon(
                             Icons.Filled.MoreVert,
@@ -229,6 +251,7 @@ fun ScoreboardScreen(
                         accent = colorA,
                         highlighted = highlightA,
                         onAddPoint = { onAddPoint(TeamSide.A) },
+                        onAce = { onAcePoint(TeamSide.A) },
                         onRemovePoint = { onRemovePoint(TeamSide.A) },
                         onEditName = { editing = TeamSide.A },
                         modifier = Modifier
@@ -243,6 +266,7 @@ fun ScoreboardScreen(
                         accent = colorB,
                         highlighted = highlightB,
                         onAddPoint = { onAddPoint(TeamSide.B) },
+                        onAce = { onAcePoint(TeamSide.B) },
                         onRemovePoint = { onRemovePoint(TeamSide.B) },
                         onEditName = { editing = TeamSide.B },
                         modifier = Modifier
@@ -287,6 +311,31 @@ fun ScoreboardScreen(
                     }
                 }
 
+            // Aviso de SET POINT / MATCH POINT
+            if (!state.finished) {
+                state.setPointSide?.let { sp ->
+                    val name = if (sp == TeamSide.A) state.teamAName else state.teamBName
+                    val accent = if (sp == TeamSide.A) colorA else colorB
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Text(
+                            text = (if (state.matchPoint) "MATCH POINT · " else "SET POINT · ") + name.uppercase(),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(accent)
+                                .padding(horizontal = 16.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+
             // Indicador visual de comando da S Pen
             SpenIndicatorOverlay(feedback = spenFeedback, onConsumed = onSpenConsumed)
 
@@ -324,6 +373,9 @@ fun ScoreboardScreen(
             onSound = onSetSound,
             onVibration = onSetVibration,
             onSpen = onSetSpen,
+            onPointSoundA = { onSetPointSound(TeamSide.A, it) },
+            onPointSoundB = { onSetPointSound(TeamSide.B, it) },
+            onVoice = onSetVoice,
             onDismiss = { showSettings = false }
         )
     }
