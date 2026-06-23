@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">S Pen Placar</string>
+
+    <!-- Times -->
+    <string name="team_a_default">Time A</string>
+    <string name="team_b_default">Time B</string>
+
+    <!-- Ações -->
+    <string name="add_point">Adicionar ponto</string>
+    <string name="remove_point">Remover ponto</string>
+    <string name="undo">Desfazer</string>
+    <string name="reset_match">Nova partida</string>
+    <string name="history">Histórico</string>
+    <string name="share">Compartilhar</string>
+    <string name="settings">Configurações</string>
+
+    <!-- Cronômetro -->
+    <string name="timer_start">Iniciar</string>
+    <string name="timer_pause">Pausar</string>
+    <string name="timer_reset">Zerar</string>
+
+    <!-- Sets -->
+    <string name="sets_label">Sets</string>
+    <string name="set_number">Set %1$d</string>
+    <string name="match_finished">Partida encerrada! Vencedor: %1$s</string>
+    <string name="set_won">%1$s venceu o set %2$d</string>
+
+    <!-- S Pen -->
+    <string name="spen_single_click">Clique S Pen: +1 Time A</string>
+    <string name="spen_double_click">Clique duplo S Pen: +1 Time B</string>
+    <string name="spen_long_press">Pressionar S Pen: desfazer</string>
+
+    <!-- Configurações -->
+    <string name="theme">Tema</string>
+    <string name="theme_system">Sistema</string>
+    <string name="theme_light">Claro</string>
+    <string name="theme_dark">Escuro</string>
+    <string name="sound_enabled">Sons</string>
+    <string name="vibration_enabled">Vibração</string>
+    <string name="spen_enabled">Controle por S Pen</string>
+
+    <!-- Cast -->
+    <string name="cast_app_name">S Pen Placar</string>
+</resources>
