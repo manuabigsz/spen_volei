@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -80,6 +81,8 @@ fun PlayersScreen(
     var showBulkDelete by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     var historyTarget by remember { mutableStateOf<PlayerEntity?>(null) }
+    var showListSelect by remember { mutableStateOf(false) }
+    var notFoundNames by remember { mutableStateOf<List<String>>(emptyList()) }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -140,6 +143,11 @@ fun PlayersScreen(
                         shape = RoundedCornerShape(18.dp),
                         containerColor = MaterialTheme.colorScheme.surface
                     ) {
+                        DropdownMenuItem(
+                            text = { Text("Selecionar pela lista") },
+                            leadingIcon = { Icon(Icons.Filled.Checklist, null) },
+                            onClick = { menuOpen = false; showListSelect = true }
+                        )
                         DropdownMenuItem(
                             text = { Text("Importar CSV") },
                             leadingIcon = { Icon(Icons.Filled.UploadFile, null) },
@@ -257,7 +265,7 @@ fun PlayersScreen(
             players = players,
             constraints = constraints,
             teams = teams,
-            onDraw = { viewModel.draw(it) },
+            onDraw = { count, mode -> viewModel.draw(count, mode) },
             onAddConstraint = { a, b -> viewModel.addConstraint(a, b) },
             onRemoveConstraint = { viewModel.removeConstraint(it) },
             onShare = { shareText(context, it) },
@@ -284,6 +292,48 @@ fun PlayersScreen(
             player = player,
             viewModel = viewModel,
             onDismiss = { historyTarget = null }
+        )
+    }
+
+    if (showListSelect) {
+        SelectByListDialog(
+            onDismiss = { showListSelect = false },
+            onConfirm = { text ->
+                showListSelect = false
+                viewModel.selectFromPastedList(text) { matched, notFound ->
+                    Toast.makeText(context, "$matched selecionado(s)", Toast.LENGTH_SHORT).show()
+                    notFoundNames = notFound
+                }
+            }
+        )
+    }
+
+    if (notFoundNames.isNotEmpty()) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { notFoundNames = emptyList() },
+            title = { Text("Cadastrar não encontrados") },
+            text = {
+                Text(
+                    "Estes nomes não estão cadastrados:\n\n" +
+                        notFoundNames.joinToString(", ") +
+                        "\n\nCadastrar como novos (nível Básico) e marcar presentes? " +
+                        "Você pode ajustar as habilidades depois."
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    val names = notFoundNames
+                    notFoundNames = emptyList()
+                    viewModel.registerBasicPlayers(names) {
+                        Toast.makeText(context, "${names.size} cadastrado(s)", Toast.LENGTH_SHORT).show()
+                    }
+                }) { Text("Cadastrar") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { notFoundNames = emptyList() }) {
+                    Text("Agora não")
+                }
+            }
         )
     }
 
@@ -408,6 +458,46 @@ private fun EmptyState(onImport: () -> Unit, modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+@Composable
+private fun SelectByListDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var text by remember { mutableStateOf("") }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Selecionar pela lista") },
+        text = {
+            androidx.compose.foundation.layout.Column {
+                Text(
+                    "Cole a lista do grupo (ex.: \"1. Manu\", \"2. Léo\"...). " +
+                        "Os jogadores cadastrados com esses nomes serão marcados como presentes.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                androidx.compose.material3.OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    placeholder = { Text("1. Manu\n2. Léo\n3. Gabson...") },
+                    minLines = 5,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                )
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                enabled = text.isNotBlank(),
+                onClick = { onConfirm(text) }
+            ) { Text("Selecionar") }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
 }
 
 private fun shareText(context: android.content.Context, text: String) {

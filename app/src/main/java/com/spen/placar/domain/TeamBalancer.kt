@@ -8,6 +8,9 @@ data class BalancedTeams<T>(
     val bench: List<T>
 )
 
+/** Critério de balanceamento do sorteio. */
+enum class BalanceMode { TOTAL, SKILL }
+
 /**
  * Distribui os jogadores em [teamCount] times **balanceados** pelo nível total.
  *
@@ -58,6 +61,66 @@ fun <T> balanceTeams(
         if (best == -1) bench.add(p) else {
             teams[best].add(p)
             sums[best] += weight(p)
+        }
+    }
+    return BalancedTeams(teams, bench)
+}
+
+/**
+ * Balanceia distribuindo as **habilidades** entre os times: cada jogador vai
+ * para o time que estiver mais fraco na sua habilidade mais forte. Isso ajuda a
+ * espalhar especialistas (levantadores, passadores) entre os times.
+ *
+ * @param skills devolve os 5 pesos (1..3) do jogador, na ordem das habilidades.
+ */
+fun <T> balanceTeamsBySkill(
+    players: List<T>,
+    teamCount: Int,
+    seed: Long? = null,
+    skills: (T) -> IntArray,
+    separated: (T, T) -> Boolean = { _, _ -> false }
+): BalancedTeams<T> {
+    require(teamCount >= 2) { "É preciso pelo menos 2 times." }
+    if (players.isEmpty()) return BalancedTeams(List(teamCount) { emptyList() }, emptyList())
+
+    val perTeam = players.size / teamCount
+    if (perTeam == 0) {
+        val shuffled = players.shuffled(seedRandom(seed))
+        return BalancedTeams(shuffled.map { listOf(it) }, emptyList())
+    }
+
+    val skillCount = skills(players.first()).size
+    val ordered = players.shuffled(seedRandom(seed)).sortedByDescending { skills(it).sum() }
+
+    val teams = MutableList(teamCount) { mutableListOf<T>() }
+    val skillSums = Array(teamCount) { IntArray(skillCount) }
+    val totals = IntArray(teamCount)
+    val bench = mutableListOf<T>()
+
+    for (p in ordered) {
+        val w = skills(p)
+        val strongest = w.indices.maxByOrNull { w[it] } ?: 0
+
+        fun choose(allowed: (Int) -> Boolean): Int {
+            var best = -1
+            for (i in 0 until teamCount) {
+                if (teams[i].size < perTeam && allowed(i)) {
+                    val better = best == -1 ||
+                        skillSums[i][strongest] < skillSums[best][strongest] ||
+                        (skillSums[i][strongest] == skillSums[best][strongest] && totals[i] < totals[best])
+                    if (better) best = i
+                }
+            }
+            return best
+        }
+
+        var team = choose { i -> teams[i].none { separated(p, it) } }
+        if (team == -1) team = choose { true }
+
+        if (team == -1) bench.add(p) else {
+            teams[team].add(p)
+            for (s in 0 until skillCount) skillSums[team][s] += w[s]
+            totals[team] += w.sum()
         }
     }
     return BalancedTeams(teams, bench)

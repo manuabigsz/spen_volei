@@ -109,6 +109,13 @@ fun ScoreboardScreen(
     val colorA = teamAColor(dark)
     val colorB = teamBColor(dark)
 
+    // Mantém a tela ligada durante o jogo.
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {

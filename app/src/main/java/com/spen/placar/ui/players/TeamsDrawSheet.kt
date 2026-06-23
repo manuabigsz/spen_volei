@@ -27,6 +27,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.spen.placar.data.local.PlayerConstraintEntity
 import com.spen.placar.data.local.PlayerEntity
 import com.spen.placar.data.local.total
+import com.spen.placar.domain.BalanceMode
 import com.spen.placar.domain.BalancedTeams
 
 /** Folha inferior para configurar e visualizar o sorteio de times. */
@@ -52,7 +56,7 @@ fun TeamsDrawSheet(
     players: List<PlayerEntity>,
     constraints: List<PlayerConstraintEntity>,
     teams: BalancedTeams<PlayerEntity>?,
-    onDraw: (Int) -> Unit,
+    onDraw: (Int, BalanceMode) -> Unit,
     onAddConstraint: (Long, Long) -> Unit,
     onRemoveConstraint: (Long) -> Unit,
     onShare: (String) -> Unit,
@@ -62,6 +66,7 @@ fun TeamsDrawSheet(
 ) {
     var teamCount by remember { mutableIntStateOf(2) }
     var showLevels by remember { mutableStateOf(false) }
+    var mode by remember { mutableStateOf(BalanceMode.TOTAL) }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -106,6 +111,27 @@ fun TeamsDrawSheet(
                 }
             }
 
+            // Critério de equilíbrio
+            Column(modifier = Modifier.padding(top = 16.dp)) {
+                Text("Equilibrar por", fontWeight = FontWeight.Medium)
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                ) {
+                    SegmentedButton(
+                        selected = mode == BalanceMode.TOTAL,
+                        onClick = { mode = BalanceMode.TOTAL },
+                        shape = SegmentedButtonDefaults.itemShape(0, 2)
+                    ) { Text("Pontos") }
+                    SegmentedButton(
+                        selected = mode == BalanceMode.SKILL,
+                        onClick = { mode = BalanceMode.SKILL },
+                        shape = SegmentedButtonDefaults.itemShape(1, 2)
+                    ) { Text("Habilidade") }
+                }
+            }
+
             ConstraintsSection(
                 players = players,
                 constraints = constraints,
@@ -114,7 +140,7 @@ fun TeamsDrawSheet(
             )
 
             Button(
-                onClick = { onDraw(teamCount) },
+                onClick = { onDraw(teamCount, mode) },
                 enabled = presentCount >= teamCount,
                 shape = RoundedCornerShape(50),
                 modifier = Modifier
