@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -30,6 +33,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -55,7 +60,6 @@ import com.spen.placar.data.prefs.ThemeMode
 import com.spen.placar.domain.MatchState
 import com.spen.placar.domain.ScoreEvent
 import com.spen.placar.domain.TeamSide
-import com.spen.placar.ui.scoreboard.components.CastButton
 import com.spen.placar.ui.scoreboard.components.Confetti
 import com.spen.placar.ui.scoreboard.components.EditNameDialog
 import com.spen.placar.ui.scoreboard.components.PointHistorySheet
@@ -143,7 +147,6 @@ fun ScoreboardScreen(
                     }
                 },
                 actions = {
-                    CastButton()
                     IconButton(onClick = { menuOpen = true }) {
                         Icon(
                             Icons.Filled.MoreVert,
@@ -151,32 +154,34 @@ fun ScoreboardScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Histórico de pontos") },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.List, null) },
-                            onClick = { menuOpen = false; showPointHistory = true }
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false },
+                        shape = RoundedCornerShape(18.dp),
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 2.dp,
+                        shadowElevation = 8.dp,
+                        modifier = Modifier.width(244.dp)
+                    ) {
+                        PrettyMenuItem("Histórico de pontos", Icons.AutoMirrored.Filled.List) {
+                            menuOpen = false; showPointHistory = true
+                        }
+                        PrettyMenuItem("Histórico de partidas", Icons.Filled.EmojiEvents) {
+                            menuOpen = false; onOpenHistory()
+                        }
+                        PrettyMenuItem("Compartilhar resultado", Icons.Filled.Share) {
+                            menuOpen = false; onShare()
+                        }
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            color = MaterialTheme.colorScheme.outline
                         )
-                        DropdownMenuItem(
-                            text = { Text("Histórico de partidas") },
-                            leadingIcon = { Icon(Icons.Filled.EmojiEvents, null) },
-                            onClick = { menuOpen = false; onOpenHistory() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Compartilhar resultado") },
-                            leadingIcon = { Icon(Icons.Filled.Share, null) },
-                            onClick = { menuOpen = false; onShare() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Nova partida") },
-                            leadingIcon = { Icon(Icons.Filled.Refresh, null) },
-                            onClick = { menuOpen = false; onReset() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Configurações") },
-                            leadingIcon = { Icon(Icons.Filled.Settings, null) },
-                            onClick = { menuOpen = false; showSettings = true }
-                        )
+                        PrettyMenuItem("Nova partida", Icons.Filled.Refresh) {
+                            menuOpen = false; onReset()
+                        }
+                        PrettyMenuItem("Configurações", Icons.Filled.Settings) {
+                            menuOpen = false; showSettings = true
+                        }
                     }
                 }
             )
@@ -194,39 +199,43 @@ fun ScoreboardScreen(
             ) {
                 val setsPointsA = state.completedSets.map { it.pointsA }
                 val setsPointsB = state.completedSets.map { it.pointsB }
+                val highlightA = spenFeedback?.action == SpenAction.POINT_A
+                val highlightB = spenFeedback?.action == SpenAction.POINT_B
 
-                // Times empilhados: A em cima, B embaixo
-                Column(
+                // Cards lado a lado: A à esquerda, B à direita
+                Row(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     TeamPanel(
                         name = state.teamAName,
                         points = state.pointsA,
                         sets = state.setsA,
                         setPoints = setsPointsA,
-                        color = colorA,
+                        accent = colorA,
+                        highlighted = highlightA,
                         onAddPoint = { onAddPoint(TeamSide.A) },
                         onRemovePoint = { onRemovePoint(TeamSide.A) },
                         onEditName = { editing = TeamSide.A },
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxWidth()
+                            .fillMaxHeight()
                     )
                     TeamPanel(
                         name = state.teamBName,
                         points = state.pointsB,
                         sets = state.setsB,
                         setPoints = setsPointsB,
-                        color = colorB,
+                        accent = colorB,
+                        highlighted = highlightB,
                         onAddPoint = { onAddPoint(TeamSide.B) },
                         onRemovePoint = { onRemovePoint(TeamSide.B) },
                         onEditName = { editing = TeamSide.B },
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxWidth()
+                            .fillMaxHeight()
                     )
                 }
 
@@ -315,6 +324,23 @@ fun ScoreboardScreen(
             onDismiss = { showPointHistory = false }
         )
     }
+}
+
+/** Item de menu refinado: ícone discreto, texto consistente e bom espaçamento. */
+@Composable
+private fun PrettyMenuItem(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    DropdownMenuItem(
+        text = { Text(text, style = MaterialTheme.typography.bodyLarge) },
+        leadingIcon = {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+    )
 }
 
 /** Overlay elegante exibido ao final da partida. */

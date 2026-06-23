@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import com.spen.placar.domain.TeamSide
 import com.spen.placar.ui.scoreboard.MatchEffect
 
 /**
@@ -35,7 +36,15 @@ class FeedbackPlayer(context: Context) {
     fun handle(effect: MatchEffect, soundEnabled: Boolean, vibrationEnabled: Boolean) {
         when (effect) {
             is MatchEffect.PointScored -> {
-                if (soundEnabled) tone(ToneGenerator.TONE_PROP_BEEP, 90)
+                // Som distinto para cada equipe (tom grave para A, agudo para B).
+                if (soundEnabled) {
+                    val toneType = if (effect.side == TeamSide.A) {
+                        ToneGenerator.TONE_DTMF_1   // mais grave
+                    } else {
+                        ToneGenerator.TONE_DTMF_9   // mais agudo
+                    }
+                    tone(toneType, 140)
+                }
                 if (vibrationEnabled) vibrate(30)
             }
             is MatchEffect.Undone -> {

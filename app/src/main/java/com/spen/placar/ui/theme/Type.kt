@@ -32,10 +32,10 @@ val Typography = Typography(
     )
 )
 
-/** Nome da equipe — maiúsculas espaçadas, leve e discreto. */
+/** Nome da equipe — semibold, maiúsculas levemente espaçadas, discreto. */
 val TeamNameStyle = TextStyle(
     fontFamily = sans,
-    fontWeight = FontWeight.Medium,
-    fontSize = 18.sp,
-    letterSpacing = 3.sp
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 15.sp,
+    letterSpacing = 1.5.sp
 )
