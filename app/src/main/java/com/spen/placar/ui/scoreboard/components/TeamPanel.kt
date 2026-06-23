@@ -1,142 +1,183 @@
 package com.spen.placar.ui.scoreboard.components
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.runtime.remember
+import com.spen.placar.ui.theme.TeamNameStyle
 
 /**
- * Painel de uma equipe: grande, colorido e inteiramente clicável para
- * adicionar ponto (otimizado para velocidade durante o jogo).
+ * Painel de uma equipe em layout **horizontal** (faixa larga):
+ * informações à esquerda, número grande ao centro e botões à direita.
  *
- * @param scoreFontSize tamanho do número do placar (escalado conforme a tela).
+ * O tamanho do número se adapta sozinho à altura/largura disponível
+ * (responsivo para celular e tablet). O painel inteiro soma ponto ao toque.
+ *
+ * @param setPoints pontos desta equipe nos sets já encerrados (placar).
  */
 @Composable
 fun TeamPanel(
     name: String,
     points: Int,
     sets: Int,
+    setPoints: List<Int>,
     color: Color,
-    scoreFontSize: Dp,
     onAddPoint: () -> Unit,
     onRemovePoint: () -> Unit,
     onEditName: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Pequeno "pulo" do número a cada alteração para feedback visual.
-    val scale by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = tween(120),
-        label = "scoreScale"
-    )
-
     val interaction = remember { MutableInteractionSource() }
 
     Box(
         modifier = modifier
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(28.dp))
-            .background(color.copy(alpha = 0.18f))
-            // Toque em qualquer lugar do painel = +1 ponto (operação rápida).
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onAddPoint
-            )
-            .semantics { contentDescription = "Adicionar ponto para $name" }
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(32.dp))
+            .background(color.copy(alpha = 0.06f))
+            .border(BorderStroke(1.dp, color.copy(alpha = 0.18f)), RoundedCornerShape(32.dp))
+            .clickable(interactionSource = interaction, indication = null, onClick = onAddPoint)
     ) {
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+                .fillMaxSize()
+                .padding(horizontal = 22.dp, vertical = 14.dp)
         ) {
-            // Nome + sets vencidos
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = name.uppercase(),
-                    color = color,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onEditName)
-                        .padding(4.dp)
-                )
-                SetsPips(sets = sets, color = color)
+            // Número responsivo ao tamanho da faixa.
+            val scoreSp = with(LocalDensity.current) {
+                val byHeight = maxHeight * 0.62f
+                val byWidth = maxWidth * 0.26f
+                minOf(byHeight, byWidth).coerceIn(64.dp, 220.dp).toSp()
             }
 
-            // Placar gigante
-            Text(
-                text = points.toString(),
-                color = color,
-                fontWeight = FontWeight.Black,
-                fontSize = with(androidx.compose.ui.platform.LocalDensity.current) {
-                    scoreFontSize.toSp()
-                },
-                modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale }
-            )
-
-            // Botões +1 / -1
             Row(
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier.fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
-                    onClick = onRemovePoint,
-                    modifier = Modifier.size(56.dp)
+                // Esquerda: nome, sets e placar dos sets
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        Icons.Filled.Remove,
-                        contentDescription = "Remover ponto de $name",
-                        tint = color
+                    Text(
+                        text = name.uppercase(),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = TeamNameStyle,
+                        maxLines = 1,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(onClick = onEditName)
+                            .padding(vertical = 4.dp)
                     )
+                    SetsPips(sets = sets, color = color)
+                    if (setPoints.isNotEmpty()) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            setPoints.forEach { p ->
+                                Text(
+                                    text = p.toString(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
-                FilledIconButton(
-                    onClick = onAddPoint,
-                    modifier = Modifier.size(72.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = color)
+
+                // Centro: número gigante animado
+                Box(
+                    modifier = Modifier.weight(1.1f),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Filled.Add,
-                        contentDescription = "Adicionar ponto para $name",
-                        tint = Color.Black,
-                        modifier = Modifier.size(36.dp)
+                    AnimatedContent(
+                        targetState = points,
+                        transitionSpec = {
+                            val spec = tween<Float>(220)
+                            if (targetState >= initialState) {
+                                (slideInVertically(tween(220)) { it / 3 } + fadeIn(spec)) togetherWith
+                                    (slideOutVertically(tween(220)) { -it / 3 } + fadeOut(spec))
+                            } else {
+                                (slideInVertically(tween(220)) { -it / 3 } + fadeIn(spec)) togetherWith
+                                    (slideOutVertically(tween(220)) { it / 3 } + fadeOut(spec))
+                            }.using(SizeTransform(clip = false))
+                        },
+                        label = "score"
+                    ) { value ->
+                        Text(
+                            text = value.toString(),
+                            color = color,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = scoreSp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                // Direita: botões − / +
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircleControl(
+                        onClick = onRemovePoint,
+                        container = MaterialTheme.colorScheme.surfaceVariant,
+                        content = MaterialTheme.colorScheme.onSurfaceVariant,
+                        size = 52.dp,
+                        icon = { tint ->
+                            Icon(Icons.Filled.Remove, contentDescription = "Remover ponto de $name", tint = tint)
+                        }
+                    )
+                    CircleControl(
+                        onClick = onAddPoint,
+                        container = color,
+                        content = Color.White,
+                        size = 68.dp,
+                        icon = { tint ->
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = "Adicionar ponto para $name",
+                                tint = tint,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
                     )
                 }
             }
@@ -144,19 +185,39 @@ fun TeamPanel(
     }
 }
 
-/** Bolinhas representando os sets vencidos pela equipe. */
+@Composable
+private fun CircleControl(
+    onClick: () -> Unit,
+    container: Color,
+    content: Color,
+    size: Dp,
+    icon: @Composable (Color) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(container)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        icon(content)
+    }
+}
+
+/** Indicador minimalista dos sets vencidos. */
 @Composable
 private fun SetsPips(sets: Int, color: Color, total: Int = 3) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.padding(top = 6.dp)
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        modifier = Modifier.padding(top = 8.dp)
     ) {
         repeat(total) { i ->
             Box(
                 modifier = Modifier
-                    .size(14.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(if (i < sets) color else color.copy(alpha = 0.25f))
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(if (i < sets) color else color.copy(alpha = 0.20f))
             )
         }
     }

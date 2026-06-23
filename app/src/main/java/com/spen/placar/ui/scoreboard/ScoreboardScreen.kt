@@ -1,42 +1,42 @@
 package com.spen.placar.ui.scoreboard
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,25 +44,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.spen.placar.data.prefs.AppSettings
+import com.spen.placar.data.prefs.ThemeMode
 import com.spen.placar.domain.MatchState
 import com.spen.placar.domain.ScoreEvent
 import com.spen.placar.domain.TeamSide
 import com.spen.placar.ui.scoreboard.components.CastButton
+import com.spen.placar.ui.scoreboard.components.Confetti
 import com.spen.placar.ui.scoreboard.components.EditNameDialog
 import com.spen.placar.ui.scoreboard.components.PointHistorySheet
 import com.spen.placar.ui.scoreboard.components.SettingsDialog
 import com.spen.placar.ui.scoreboard.components.SpenIndicatorOverlay
 import com.spen.placar.ui.scoreboard.components.TeamPanel
-import com.spen.placar.ui.theme.TeamAColor
-import com.spen.placar.ui.theme.TeamBColor
-import com.spen.placar.data.prefs.ThemeMode
+import com.spen.placar.ui.theme.teamAColor
+import com.spen.placar.ui.theme.teamBColor
 import com.spen.placar.util.formatDuration
 
 /**
- * Tela principal: o placar grande, responsivo e otimizado para operação rápida.
+ * Tela principal: placar grande, minimalista e responsivo.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,7 +80,6 @@ fun ScoreboardScreen(
     timerRunning: Boolean,
     spenFeedback: SpenFeedback?,
     spenAvailable: Boolean,
-    spenDebug: List<String>,
     onAddPoint: (TeamSide) -> Unit,
     onRemovePoint: (TeamSide) -> Unit,
     onUndo: () -> Unit,
@@ -95,38 +99,57 @@ fun ScoreboardScreen(
     var showPointHistory by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<TeamSide?>(null) }
 
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val colorA = teamAColor(dark)
+    val colorB = teamBColor(dark)
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                ),
                 title = {
-                    Column {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "${state.teamAName} ${state.setsA} x ${state.setsB} ${state.teamBName}",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
+                            text = "${state.setsA} – ${state.setsB}",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 18.sp,
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                         Text(
-                            text = if (state.isTieBreak) "Tie-break (Set ${state.currentSet})"
-                            else "Set ${state.currentSet}",
+                            text = if (state.isTieBreak) "TIE-BREAK · SET ${state.currentSet}"
+                            else "SET ${state.currentSet}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                navigationIcon = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onToggleTimer) {
+                            Icon(
+                                if (timerRunning) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = "Cronômetro",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            formatDuration(elapsedMillis),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 actions = {
-                    // Cronômetro com play/pause
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(formatDuration(elapsedMillis), fontWeight = FontWeight.Medium)
-                        IconButton(onClick = onToggleTimer) {
-                            Icon(
-                                if (timerRunning) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                contentDescription = "Cronômetro"
-                            )
-                        }
-                    }
                     CastButton()
                     IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "Mais opções")
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = "Mais opções",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(
@@ -136,7 +159,7 @@ fun ScoreboardScreen(
                         )
                         DropdownMenuItem(
                             text = { Text("Histórico de partidas") },
-                            leadingIcon = { Icon(Icons.Filled.Refresh, null) },
+                            leadingIcon = { Icon(Icons.Filled.EmojiEvents, null) },
                             onClick = { menuOpen = false; onOpenHistory() }
                         )
                         DropdownMenuItem(
@@ -164,91 +187,102 @@ fun ScoreboardScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(12.dp)) {
-                // Fonte do placar escalada conforme o espaço (responsivo p/ tablet).
-                val scoreSize = (minOf(maxWidth, maxHeight) * 0.55f).coerceIn(96.dp, 360.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+            ) {
+                val setsPointsA = state.completedSets.map { it.pointsA }
+                val setsPointsB = state.completedSets.map { it.pointsB }
 
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Row(
+                // Times empilhados: A em cima, B embaixo
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    TeamPanel(
+                        name = state.teamAName,
+                        points = state.pointsA,
+                        sets = state.setsA,
+                        setPoints = setsPointsA,
+                        color = colorA,
+                        onAddPoint = { onAddPoint(TeamSide.A) },
+                        onRemovePoint = { onRemovePoint(TeamSide.A) },
+                        onEditName = { editing = TeamSide.A },
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        TeamPanel(
-                            name = state.teamAName,
-                            points = state.pointsA,
-                            sets = state.setsA,
-                            color = TeamAColor,
-                            scoreFontSize = scoreSize,
-                            onAddPoint = { onAddPoint(TeamSide.A) },
-                            onRemovePoint = { onRemovePoint(TeamSide.A) },
-                            onEditName = { editing = TeamSide.A },
-                            modifier = Modifier.weight(1f)
-                        )
-                        TeamPanel(
-                            name = state.teamBName,
-                            points = state.pointsB,
-                            sets = state.setsB,
-                            color = TeamBColor,
-                            scoreFontSize = scoreSize,
-                            onAddPoint = { onAddPoint(TeamSide.B) },
-                            onRemovePoint = { onRemovePoint(TeamSide.B) },
-                            onEditName = { editing = TeamSide.B },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                            .fillMaxWidth()
+                    )
+                    TeamPanel(
+                        name = state.teamBName,
+                        points = state.pointsB,
+                        sets = state.setsB,
+                        setPoints = setsPointsB,
+                        color = colorB,
+                        onAddPoint = { onAddPoint(TeamSide.B) },
+                        onRemovePoint = { onRemovePoint(TeamSide.B) },
+                        onEditName = { editing = TeamSide.B },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    )
+                }
 
-                    // Barra inferior: desfazer + atalho de histórico
+                // Controles inferiores
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 12.dp),
+                            .padding(top = 14.dp, bottom = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        ExtendedFloatingActionButton(
+                        FilledTonalButton(
                             onClick = onUndo,
-                            modifier = Modifier.weight(1f),
-                            containerColor = if (canUndo) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceVariant,
-                            icon = { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null) },
-                            text = { Text("Desfazer") }
-                        )
-                        IconButton(onClick = { showPointHistory = true }) {
-                            Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Histórico de pontos")
+                            enabled = canUndo,
+                            shape = RoundedCornerShape(50),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Undo,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text("  Desfazer", fontWeight = FontWeight.Medium)
+                        }
+                        IconButton(
+                            onClick = { showPointHistory = true },
+                            modifier = Modifier.size(52.dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.List,
+                                contentDescription = "Histórico de pontos",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
-            }
-
-            // Banner de partida encerrada
-            if (state.finished && state.winner != null) {
-                val winnerName = if (state.winner == TeamSide.A) state.teamAName else state.teamBName
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.TopCenter
-                ) {
-                    Text(
-                        text = "🏆 $winnerName venceu a partida!",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
 
             // Indicador visual de comando da S Pen
             SpenIndicatorOverlay(feedback = spenFeedback, onConsumed = onSpenConsumed)
 
-            // Painel de diagnóstico da S Pen (toque para recolher/expandir)
-            SpenDebugPanel(
-                spenAvailable = spenAvailable,
-                lines = spenDebug,
-                modifier = Modifier.align(Alignment.BottomStart)
-            )
+            // Overlay de vitória
+            if (state.finished && state.winner != null) {
+                val winnerName = if (state.winner == TeamSide.A) state.teamAName else state.teamBName
+                val winnerColor = if (state.winner == TeamSide.A) colorA else colorB
+                WinnerOverlay(
+                    winnerName = winnerName,
+                    winnerColor = winnerColor,
+                    confettiColors = listOf(colorA, colorB, winnerColor),
+                    setsA = state.setsA,
+                    setsB = state.setsB,
+                    onNewMatch = onReset,
+                    onShare = onShare
+                )
+            }
         }
     }
 
@@ -283,52 +317,75 @@ fun ScoreboardScreen(
     }
 }
 
-/**
- * Painel flutuante de diagnóstico da S Pen. Mostra o status da conexão e as
- * últimas mensagens emitidas pelo SDK. Toque no cabeçalho para recolher.
- */
+/** Overlay elegante exibido ao final da partida. */
 @Composable
-private fun SpenDebugPanel(
-    spenAvailable: Boolean,
-    lines: List<String>,
-    modifier: Modifier = Modifier
+private fun WinnerOverlay(
+    winnerName: String,
+    winnerColor: Color,
+    confettiColors: List<Color>,
+    setsA: Int,
+    setsB: Int,
+    onNewMatch: () -> Unit,
+    onShare: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(true) }
-    val statusColor = if (spenAvailable) Color(0xFF66BB6A) else Color(0xFFEF5350)
-
     Box(
-        modifier = modifier
-            .padding(8.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xCC000000))
-            .widthIn(max = 320.dp)
-            .padding(8.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.55f)),
+        contentAlignment = Alignment.Center
     ) {
-        Column {
-            Text(
-                text = "S Pen: ${if (spenAvailable) "CONECTADA ✓" else "não conectada"}  (toque)",
-                color = statusColor,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { expanded = !expanded }
-                    .padding(vertical = 2.dp)
-            )
-            if (expanded) {
+        Confetti(colors = confettiColors, modifier = Modifier.fillMaxSize())
+        AnimatedVisibility(
+            visible = true,
+            enter = fadeIn() + scaleIn(initialScale = 0.85f),
+            exit = fadeOut()
+        ) {
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                modifier = Modifier.padding(32.dp)
+            ) {
                 Column(
-                    modifier = Modifier
-                        .heightIn(max = 160.dp)
-                        .verticalScroll(rememberScrollState())
+                    modifier = Modifier.padding(horizontal = 36.dp, vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    lines.forEach { line ->
-                        Text(
-                            text = "• $line",
-                            color = Color.White,
-                            fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(vertical = 1.dp)
-                        )
+                    Icon(
+                        Icons.Filled.EmojiEvents,
+                        contentDescription = null,
+                        tint = winnerColor,
+                        modifier = Modifier.size(56.dp)
+                    )
+                    Text(
+                        text = winnerName.uppercase(),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 22.sp,
+                        letterSpacing = 2.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                    Text(
+                        text = "venceu a partida",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "$setsA – $setsB",
+                        fontWeight = FontWeight.Light,
+                        fontSize = 40.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        FilledTonalButton(onClick = onShare, shape = RoundedCornerShape(50)) {
+                            Icon(Icons.Filled.Share, null, modifier = Modifier.size(18.dp))
+                            Text("  Compartilhar")
+                        }
+                        FilledTonalButton(onClick = onNewMatch, shape = RoundedCornerShape(50)) {
+                            Icon(Icons.Filled.Refresh, null, modifier = Modifier.size(18.dp))
+                            Text("  Nova partida")
+                        }
                     }
                 }
             }

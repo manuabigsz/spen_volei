@@ -50,7 +50,6 @@ fun PlacarApp(
         val elapsed by viewModel.elapsedMillis.collectAsStateWithLifecycle()
         val timerRunning by viewModel.timerRunning.collectAsStateWithLifecycle()
         val spenFeedback by viewModel.spenFeedback.collectAsStateWithLifecycle()
-        val spenDebug by viewModel.spenDebug.collectAsStateWithLifecycle()
         val savedMatches by viewModel.savedMatches.collectAsStateWithLifecycle()
 
         NavHost(navController = navController, startDestination = "scoreboard") {
@@ -64,7 +63,6 @@ fun PlacarApp(
                     timerRunning = timerRunning,
                     spenFeedback = spenFeedback,
                     spenAvailable = spenAvailable,
-                    spenDebug = spenDebug,
                     onAddPoint = viewModel::addPoint,
                     onRemovePoint = viewModel::removePoint,
                     onUndo = viewModel::undo,
