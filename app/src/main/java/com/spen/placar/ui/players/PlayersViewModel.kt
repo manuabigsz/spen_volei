@@ -34,6 +34,9 @@ class PlayersViewModel(
     private val _teams = MutableStateFlow<BalancedTeams<PlayerEntity>?>(null)
     val teams: StateFlow<BalancedTeams<PlayerEntity>?> = _teams.asStateFlow()
 
+    private val _syncing = MutableStateFlow(false)
+    val syncing: StateFlow<Boolean> = _syncing.asStateFlow()
+
     init {
         // Ao abrir, baixa os jogadores da nuvem e mescla com o banco local.
         syncFromCloud()
@@ -47,8 +50,10 @@ class PlayersViewModel(
             return
         }
         viewModelScope.launch {
+            _syncing.value = true
             val list = remote.fetchPlayers()
             repository.applyRemotePlayers(list)
+            _syncing.value = false
             onResult(true)
         }
     }

@@ -84,9 +84,13 @@ fun PlacarApp(
                 )
             }
             composable("history") {
+                val syncingMatches by viewModel.syncingMatches.collectAsStateWithLifecycle()
+                LaunchedEffect(Unit) { viewModel.syncMatchesFromCloud() }
                 HistoryScreen(
                     matches = savedMatches,
+                    isLoading = syncingMatches,
                     onBack = { navController.popBackStack() },
+                    onRefresh = { viewModel.syncMatchesFromCloud() },
                     onDelete = viewModel::deleteSavedMatch,
                     onShare = { match ->
                         val text = "🏐 ${match.teamAName} ${match.setsA} x ${match.setsB} " +

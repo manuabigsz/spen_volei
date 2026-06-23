@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,7 +36,9 @@ import com.spen.placar.util.formatDuration
 @Composable
 fun HistoryScreen(
     matches: List<MatchEntity>,
+    isLoading: Boolean,
     onBack: () -> Unit,
+    onRefresh: () -> Unit,
     onDelete: (Long) -> Unit,
     onShare: (MatchEntity) -> Unit
 ) {
@@ -47,10 +50,22 @@ fun HistoryScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar")
                     }
+                },
+                actions = {
+                    IconButton(onClick = onRefresh) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Sincronizar")
+                    }
                 }
             )
         }
     ) { padding ->
+        if (isLoading) {
+            androidx.compose.material3.LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(padding)
+            )
+        }
         if (matches.isEmpty()) {
             Box(
                 modifier = Modifier

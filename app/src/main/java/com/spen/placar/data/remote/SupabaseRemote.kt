@@ -11,6 +11,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.time.Instant
+import java.time.OffsetDateTime
 
 /**
  * Cliente mínimo do Supabase (PostgREST) para salvar partidas e times na nuvem.
@@ -110,6 +111,41 @@ class SupabaseRemote(
             emptyList()
         }
     }
+
+    /** Busca as partidas salvas na nuvem (mais recentes primeiro). */
+    suspend fun fetchMatches(): List<MatchEntity> = withContext(Dispatchers.IO) {
+        if (!isConfigured) return@withContext emptyList()
+        val body = get("matches?select=*&order=finished_at.desc") ?: return@withContext emptyList()
+        try {
+            val arr = JSONArray(body)
+            (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                MatchEntity(
+                    teamAName = o.optString("team_a"),
+                    teamBName = o.optString("team_b"),
+                    setsA = o.optInt("sets_a"),
+                    setsB = o.optInt("sets_b"),
+                    winnerName = o.optString("winner"),
+                    scoreSummary = o.optString("score_summary"),
+                    durationMillis = o.optLong("duration_millis"),
+                    finishedAt = parseTimestamp(o.optString("finished_at")),
+                    playersA = namesFrom(o, "players_a"),
+                    playersB = namesFrom(o, "players_b")
+                )
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "Erro ao ler partidas da nuvem", t)
+            emptyList()
+        }
+    }
+
+    private fun namesFrom(o: JSONObject, key: String): String {
+        val a = o.optJSONArray(key) ?: return ""
+        return (0 until a.length()).joinToString(", ") { a.optString(it) }
+    }
+
+    private fun parseTimestamp(s: String): Long =
+        runCatching { OffsetDateTime.parse(s).toInstant().toEpochMilli() }.getOrDefault(0L)
 
     private fun get(pathAndQuery: String): String? {
         return try {

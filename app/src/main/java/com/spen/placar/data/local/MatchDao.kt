@@ -15,6 +15,9 @@ interface MatchDao {
     @Query("SELECT * FROM matches ORDER BY finishedAt DESC")
     fun observeAll(): Flow<List<MatchEntity>>
 
+    @Query("SELECT finishedAt FROM matches")
+    suspend fun allFinishedAt(): List<Long>
+
     @Query("DELETE FROM matches WHERE id = :id")
     suspend fun deleteById(id: Long)
 

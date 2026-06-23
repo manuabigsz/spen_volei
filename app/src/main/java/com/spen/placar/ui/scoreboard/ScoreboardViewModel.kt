@@ -88,6 +88,21 @@ class ScoreboardViewModel(
     val savedMatches = matchRepository.history
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    private val _syncingMatches = MutableStateFlow(false)
+    val syncingMatches: StateFlow<Boolean> = _syncingMatches.asStateFlow()
+
+    /** Baixa as partidas da nuvem e mescla no histórico local. */
+    fun syncMatchesFromCloud() {
+        val remote = supabaseRemote
+        if (remote == null || !remote.isConfigured) return
+        viewModelScope.launch {
+            _syncingMatches.value = true
+            val list = remote.fetchMatches()
+            matchRepository.applyRemoteMatches(list)
+            _syncingMatches.value = false
+        }
+    }
+
     init {
         startTimerTicker()
     }

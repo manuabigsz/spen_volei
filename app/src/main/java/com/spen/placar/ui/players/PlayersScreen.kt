@@ -71,6 +71,7 @@ fun PlayersScreen(
     val players by viewModel.players.collectAsStateWithLifecycle()
     val teams by viewModel.teams.collectAsStateWithLifecycle()
     val constraints by viewModel.constraints.collectAsStateWithLifecycle()
+    val syncing by viewModel.syncing.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var editTarget by remember { mutableStateOf<PlayerEntity?>(null) }
@@ -189,6 +190,9 @@ fun PlayersScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            if (syncing) {
+                androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
             if (players.isEmpty()) {
                 EmptyState(
                     onImport = { importLauncher.launch(arrayOf("*/*")) },
