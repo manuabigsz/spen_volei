@@ -19,5 +19,8 @@ data class MatchEntity(
     /** Duração da partida em milissegundos (cronômetro). */
     val durationMillis: Long,
     /** Instante de término (epoch millis). */
-    val finishedAt: Long
+    val finishedAt: Long,
+    /** Jogadores de cada time (nomes separados por vírgula), se houver elenco. */
+    val playersA: String = "",
+    val playersB: String = ""
 )

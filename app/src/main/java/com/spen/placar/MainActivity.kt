@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
     private val app by lazy { application as PlacarApplication }
 
     private val viewModel: ScoreboardViewModel by viewModels {
-        ScoreboardViewModel.Factory(app.matchRepository, app.settingsRepository)
+        ScoreboardViewModel.Factory(app.matchRepository, app.settingsRepository, app.supabaseRemote)
     }
 
     private lateinit var spenManager: SpenManager

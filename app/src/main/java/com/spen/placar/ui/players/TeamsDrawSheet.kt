@@ -12,7 +12,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Scoreboard
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Info
@@ -54,6 +56,8 @@ fun TeamsDrawSheet(
     onAddConstraint: (Long, Long) -> Unit,
     onRemoveConstraint: (Long) -> Unit,
     onShare: (String) -> Unit,
+    onSaveCloud: () -> Unit,
+    onUseInScoreboard: (List<String>, List<String>) -> Unit,
     onDismiss: () -> Unit
 ) {
     var teamCount by remember { mutableIntStateOf(2) }
@@ -158,15 +162,47 @@ fun TeamsDrawSheet(
                 if (result.bench.isNotEmpty()) {
                     BenchCard(result.bench)
                 }
-                FilledTonalButton(
-                    onClick = { onShare(buildShareText(result)) },
-                    shape = RoundedCornerShape(50),
+
+                if (result.teams.size == 2) {
+                    Button(
+                        onClick = {
+                            onUseInScoreboard(
+                                result.teams[0].map { it.name },
+                                result.teams[1].map { it.name }
+                            )
+                        },
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    ) {
+                        Icon(Icons.Filled.Scoreboard, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Text("  Usar no placar", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 12.dp)
+                        .padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text("  Compartilhar times")
+                    FilledTonalButton(
+                        onClick = { onShare(buildShareText(result)) },
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text("  Compartilhar")
+                    }
+                    FilledTonalButton(
+                        onClick = onSaveCloud,
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Filled.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text("  Salvar")
+                    }
                 }
             }
         }

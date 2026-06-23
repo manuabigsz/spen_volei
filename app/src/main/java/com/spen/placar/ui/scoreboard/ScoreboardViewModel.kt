@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 class ScoreboardViewModel(
     private val matchRepository: MatchRepository,
     private val settingsRepository: SettingsRepository,
+    private val supabaseRemote: com.spen.placar.data.remote.SupabaseRemote? = null,
     private val now: () -> Long = { System.currentTimeMillis() }
 ) : ViewModel() {
 
@@ -41,6 +42,10 @@ class ScoreboardViewModel(
 
     // Pilha de snapshots para desfazer (cada ponto empilha o estado anterior).
     private val undoStack = ArrayDeque<MatchState>()
+
+    // Elenco de cada time (quando a partida vem de um sorteio de jogadores).
+    private var rostersA: List<String> = emptyList()
+    private var rostersB: List<String> = emptyList()
 
     private val _canUndo = MutableStateFlow(false)
     val canUndo: StateFlow<Boolean> = _canUndo.asStateFlow()
@@ -148,6 +153,17 @@ class ScoreboardViewModel(
     fun resetMatch() {
         val names = _match.value
         _match.value = MatchState(teamAName = names.teamAName, teamBName = names.teamBName)
+        undoStack.clear()
+        _canUndo.value = false
+        _history.value = emptyList()
+        resetTimer()
+    }
+
+    /** Inicia uma partida com times vindos do sorteio (nomes + elencos). */
+    fun applyTeams(nameA: String, playersA: List<String>, nameB: String, playersB: List<String>) {
+        rostersA = playersA
+        rostersB = playersB
+        _match.value = MatchState(teamAName = nameA, teamBName = nameB)
         undoStack.clear()
         _canUndo.value = false
         _history.value = emptyList()
@@ -264,19 +280,22 @@ class ScoreboardViewModel(
             null -> return
         }
         val summary = state.completedSets.joinToString(", ") { "${it.pointsA}-${it.pointsB}" }
+        val entity = MatchEntity(
+            teamAName = state.teamAName,
+            teamBName = state.teamBName,
+            setsA = state.setsA,
+            setsB = state.setsB,
+            winnerName = winnerName,
+            scoreSummary = summary,
+            durationMillis = _elapsedMillis.value,
+            finishedAt = now(),
+            playersA = rostersA.joinToString(", "),
+            playersB = rostersB.joinToString(", ")
+        )
         viewModelScope.launch {
-            matchRepository.save(
-                MatchEntity(
-                    teamAName = state.teamAName,
-                    teamBName = state.teamBName,
-                    setsA = state.setsA,
-                    setsB = state.setsB,
-                    winnerName = winnerName,
-                    scoreSummary = summary,
-                    durationMillis = _elapsedMillis.value,
-                    finishedAt = now()
-                )
-            )
+            matchRepository.save(entity)
+            // Sincroniza na nuvem (best-effort; ignora falhas offline).
+            supabaseRemote?.saveMatch(entity)
         }
     }
 
@@ -308,11 +327,12 @@ class ScoreboardViewModel(
      */
     class Factory(
         private val matchRepository: MatchRepository,
-        private val settingsRepository: SettingsRepository
+        private val settingsRepository: SettingsRepository,
+        private val supabaseRemote: com.spen.placar.data.remote.SupabaseRemote? = null
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return ScoreboardViewModel(matchRepository, settingsRepository) as T
+            return ScoreboardViewModel(matchRepository, settingsRepository, supabaseRemote) as T
         }
     }
 }

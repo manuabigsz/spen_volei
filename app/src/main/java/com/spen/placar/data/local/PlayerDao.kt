@@ -14,6 +14,12 @@ interface PlayerDao {
     @Query("SELECT * FROM players ORDER BY name COLLATE NOCASE ASC")
     fun observeAll(): Flow<List<PlayerEntity>>
 
+    @Query("SELECT * FROM players WHERE id = :id")
+    suspend fun getById(id: Long): PlayerEntity?
+
+    @Query("SELECT * FROM players WHERE name = :name COLLATE NOCASE LIMIT 1")
+    suspend fun findByName(name: String): PlayerEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(player: PlayerEntity): Long
 

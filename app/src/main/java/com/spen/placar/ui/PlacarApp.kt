@@ -99,11 +99,15 @@ fun PlacarApp(
             composable("players") {
                 val app = context.applicationContext as PlacarApplication
                 val playersViewModel: PlayersViewModel = viewModel(
-                    factory = PlayersViewModel.Factory(app.playerRepository)
+                    factory = PlayersViewModel.Factory(app.playerRepository, app.supabaseRemote)
                 )
                 PlayersScreen(
                     viewModel = playersViewModel,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onUseInScoreboard = { teamA, teamB ->
+                        viewModel.applyTeams("Time 1", teamA, "Time 2", teamB)
+                        navController.popBackStack("scoreboard", inclusive = false)
+                    }
                 )
             }
         }

@@ -3,6 +3,7 @@ package com.spen.placar
 import android.app.Application
 import com.spen.placar.data.local.PlacarDatabase
 import com.spen.placar.data.prefs.SettingsRepository
+import com.spen.placar.data.remote.SupabaseRemote
 import com.spen.placar.data.repository.MatchRepository
 import com.spen.placar.data.repository.PlayerRepository
 
@@ -23,11 +24,15 @@ class PlacarApplication : Application() {
     lateinit var playerRepository: PlayerRepository
         private set
 
+    lateinit var supabaseRemote: SupabaseRemote
+        private set
+
     override fun onCreate() {
         super.onCreate()
         val db = PlacarDatabase.get(this)
         matchRepository = MatchRepository(db.matchDao())
-        playerRepository = PlayerRepository(db.playerDao(), db.constraintDao())
+        playerRepository = PlayerRepository(db.playerDao(), db.constraintDao(), db.historyDao())
         settingsRepository = SettingsRepository(this)
+        supabaseRemote = SupabaseRemote(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_ANON_KEY)
     }
 }

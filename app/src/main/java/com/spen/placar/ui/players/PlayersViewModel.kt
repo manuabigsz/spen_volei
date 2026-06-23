@@ -8,6 +8,7 @@ import com.spen.placar.data.local.PlayerEntity
 import com.spen.placar.data.local.total
 import com.spen.placar.data.repository.PlayerRepository
 import com.spen.placar.domain.BalancedTeams
+import com.spen.placar.domain.SkillLevel
 import com.spen.placar.domain.balanceTeams
 import com.spen.placar.util.CsvPlayers
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,7 +20,8 @@ import kotlinx.coroutines.launch
 
 /** ViewModel do cadastro de jogadores e do sorteio de times. */
 class PlayersViewModel(
-    private val repository: PlayerRepository
+    private val repository: PlayerRepository,
+    private val supabaseRemote: com.spen.placar.data.remote.SupabaseRemote? = null
 ) : ViewModel() {
 
     val players: StateFlow<List<PlayerEntity>> = repository.players
@@ -32,24 +34,68 @@ class PlayersViewModel(
     private val _teams = MutableStateFlow<BalancedTeams<PlayerEntity>?>(null)
     val teams: StateFlow<BalancedTeams<PlayerEntity>?> = _teams.asStateFlow()
 
-    fun upsert(player: PlayerEntity) = viewModelScope.launch { repository.upsert(player) }
-    fun delete(id: Long) = viewModelScope.launch { repository.delete(id) }
+    init {
+        // Ao abrir, baixa os jogadores da nuvem e mescla com o banco local.
+        syncFromCloud()
+    }
+
+    /** Puxa os jogadores do Supabase e mescla no banco local. */
+    fun syncFromCloud(onResult: (Boolean) -> Unit = {}) {
+        val remote = supabaseRemote
+        if (remote == null || !remote.isConfigured) {
+            onResult(false)
+            return
+        }
+        viewModelScope.launch {
+            val list = remote.fetchPlayers()
+            repository.applyRemotePlayers(list)
+            onResult(true)
+        }
+    }
+
+    /** Histórico de evolução (snapshots) de um jogador. */
+    fun historyFor(playerId: Long) = repository.historyFor(playerId)
+
+    fun upsert(player: PlayerEntity) = viewModelScope.launch {
+        repository.upsert(player)
+        supabaseRemote?.savePlayer(player)
+    }
+
+    fun delete(id: Long) = viewModelScope.launch {
+        val name = players.value.firstOrNull { it.id == id }?.name
+        repository.delete(id)
+        if (name != null) supabaseRemote?.deletePlayerByName(name)
+    }
 
     /** Remove todos os jogadores atualmente selecionados (presentes). */
     fun deleteSelected() = viewModelScope.launch {
-        val ids = players.value.filter { it.present }.map { it.id }
-        repository.deleteMany(ids)
+        val selected = players.value.filter { it.present }
+        repository.deleteMany(selected.map { it.id })
+        selected.forEach { supabaseRemote?.deletePlayerByName(it.name) }
     }
     fun togglePresent(player: PlayerEntity) =
         viewModelScope.launch { repository.setPresent(player.id, !player.present) }
     fun setAllPresent(present: Boolean) = viewModelScope.launch { repository.setAllPresent(present) }
 
-    /** Importa jogadores de um conteúdo CSV. Retorna quantos foram importados. */
-    fun importCsv(content: String, onResult: (Int) -> Unit) {
+    /**
+     * Importa jogadores de um CSV, **ignorando nomes que já existem** (sem
+     * duplicar) e também duplicatas dentro do próprio arquivo. Sincroniza os
+     * novos com a nuvem. Retorna (importados, ignorados).
+     */
+    fun importCsv(content: String, onResult: (imported: Int, skipped: Int) -> Unit) {
         viewModelScope.launch {
             val parsed = CsvPlayers.parse(content)
-            if (parsed.isNotEmpty()) repository.importAll(parsed)
-            onResult(parsed.size)
+            val seen = players.value.map { SkillLevel.normalize(it.name) }.toMutableSet()
+            val toImport = mutableListOf<com.spen.placar.data.local.PlayerEntity>()
+            for (p in parsed) {
+                val key = SkillLevel.normalize(p.name)
+                if (key.isNotEmpty() && seen.add(key)) toImport.add(p)
+            }
+            if (toImport.isNotEmpty()) {
+                repository.importAll(toImport)
+                supabaseRemote?.savePlayers(toImport)
+            }
+            onResult(toImport.size, parsed.size - toImport.size)
         }
     }
 
@@ -82,9 +128,23 @@ class PlayersViewModel(
         repository.removeConstraint(id)
     }
 
-    class Factory(private val repository: PlayerRepository) : ViewModelProvider.Factory {
+    /** Salva o sorteio atual no Supabase (best-effort). */
+    fun saveDrawRemote(onResult: (Boolean) -> Unit) {
+        val result = _teams.value ?: return onResult(false)
+        viewModelScope.launch {
+            val teams = result.teams.map { team -> team.map { it.name } }
+            val bench = result.bench.map { it.name }
+            val ok = supabaseRemote?.saveDraw(teams, bench) ?: false
+            onResult(ok)
+        }
+    }
+
+    class Factory(
+        private val repository: PlayerRepository,
+        private val supabaseRemote: com.spen.placar.data.remote.SupabaseRemote? = null
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            PlayersViewModel(repository) as T
+            PlayersViewModel(repository, supabaseRemote) as T
     }
 }

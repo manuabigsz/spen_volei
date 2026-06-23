@@ -1,8 +1,16 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+}
+
+// Lê as chaves do Supabase de local.properties (fora do controle de versão).
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
 }
 
 android {
@@ -21,6 +29,10 @@ android {
         // ID da aplicação Chromecast (Default Media Receiver para desenvolvimento).
         // Substitua pelo seu App ID do Google Cast SDK Developer Console em produção.
         resValue("string", "cast_app_id", "CC1AD845")
+
+        // Configuração do Supabase (somente a publishable key vai para o app).
+        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("SUPABASE_URL", "")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("SUPABASE_ANON_KEY", "")}\"")
     }
 
     buildTypes {

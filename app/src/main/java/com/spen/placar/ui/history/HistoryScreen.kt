@@ -110,6 +110,19 @@ private fun MatchCard(match: MatchEntity, onDelete: () -> Unit, onShare: () -> U
             if (match.scoreSummary.isNotBlank()) {
                 Text("Sets: ${match.scoreSummary}", style = MaterialTheme.typography.bodyMedium)
             }
+            if (match.playersA.isNotBlank() || match.playersB.isNotBlank()) {
+                Text(
+                    "${match.teamAName}: ${match.playersA}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Text(
+                    "${match.teamBName}: ${match.playersB}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Text(
                 "${formatDate(match.finishedAt)} • ${formatDuration(match.durationMillis)}",
                 style = MaterialTheme.typography.bodySmall,

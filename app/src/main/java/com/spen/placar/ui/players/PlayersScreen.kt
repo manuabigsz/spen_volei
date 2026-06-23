@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,20 +19,25 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.GroupAdd
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -59,7 +65,8 @@ import com.spen.placar.domain.SkillLevel
 @Composable
 fun PlayersScreen(
     viewModel: PlayersViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onUseInScoreboard: (List<String>, List<String>) -> Unit
 ) {
     val players by viewModel.players.collectAsStateWithLifecycle()
     val teams by viewModel.teams.collectAsStateWithLifecycle()
@@ -70,6 +77,8 @@ fun PlayersScreen(
     var showEditor by remember { mutableStateOf(false) }
     var showDraw by remember { mutableStateOf(false) }
     var showBulkDelete by remember { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
+    var historyTarget by remember { mutableStateOf<PlayerEntity?>(null) }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -79,8 +88,13 @@ fun PlayersScreen(
                 context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
             }.getOrNull()
             if (text != null) {
-                viewModel.importCsv(text) { count ->
-                    Toast.makeText(context, "Importados $count jogador(es)", Toast.LENGTH_LONG).show()
+                viewModel.importCsv(text) { imported, skipped ->
+                    val msg = if (skipped > 0) {
+                        "Importados $imported · $skipped já existiam (ignorados)"
+                    } else {
+                        "Importados $imported jogador(es)"
+                    }
+                    Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                 }
             } else {
                 Toast.makeText(context, "Não foi possível ler o arquivo", Toast.LENGTH_LONG).show()
@@ -113,18 +127,61 @@ fun PlayersScreen(
                             )
                         }
                     }
-                    IconButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) {
-                        Icon(Icons.Filled.UploadFile, contentDescription = "Importar CSV")
+                    IconButton(onClick = { editTarget = null; showEditor = true }) {
+                        Icon(Icons.Filled.PersonAdd, contentDescription = "Adicionar jogador")
+                    }
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "Mais opções")
+                    }
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false },
+                        shape = RoundedCornerShape(18.dp),
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Importar CSV") },
+                            leadingIcon = { Icon(Icons.Filled.UploadFile, null) },
+                            onClick = { menuOpen = false; importLauncher.launch(arrayOf("*/*")) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Sincronizar com a nuvem") },
+                            leadingIcon = { Icon(Icons.Filled.CloudSync, null) },
+                            onClick = {
+                                menuOpen = false
+                                viewModel.syncFromCloud { ok ->
+                                    Toast.makeText(
+                                        context,
+                                        if (ok) "Sincronizado com a nuvem" else "Nuvem indisponível",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        )
                     }
                 }
             )
         },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { editTarget = null; showEditor = true },
-                icon = { Icon(Icons.Filled.PersonAdd, contentDescription = null) },
-                text = { Text("Jogador") }
-            )
+        bottomBar = {
+            if (players.isNotEmpty()) {
+                Surface(
+                    color = MaterialTheme.colorScheme.background,
+                    tonalElevation = 0.dp
+                ) {
+                    androidx.compose.material3.Button(
+                        onClick = { showDraw = true },
+                        enabled = presentCount >= 2,
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                            .height(52.dp)
+                    ) {
+                        Icon(Icons.Filled.GroupAdd, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Text("  Sortear times ($presentCount)", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
         }
     ) { padding ->
         Column(
@@ -173,27 +230,9 @@ fun PlayersScreen(
                             player = player,
                             onTogglePresent = { viewModel.togglePresent(player) },
                             onEdit = { editTarget = player; showEditor = true },
+                            onHistory = { historyTarget = player },
                             onDelete = { viewModel.delete(player.id) }
                         )
-                    }
-                }
-
-                // Barra de sorteio
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    androidx.compose.material3.Button(
-                        onClick = { showDraw = true },
-                        enabled = presentCount >= 2,
-                        shape = RoundedCornerShape(50),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Filled.GroupAdd, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Text("  Sortear times ($presentCount)", fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -218,7 +257,29 @@ fun PlayersScreen(
             onAddConstraint = { a, b -> viewModel.addConstraint(a, b) },
             onRemoveConstraint = { viewModel.removeConstraint(it) },
             onShare = { shareText(context, it) },
+            onSaveCloud = {
+                viewModel.saveDrawRemote { ok ->
+                    Toast.makeText(
+                        context,
+                        if (ok) "Times salvos na nuvem" else "Não foi possível salvar (verifique a conexão)",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            },
+            onUseInScoreboard = { teamA, teamB ->
+                showDraw = false
+                viewModel.clearDraw()
+                onUseInScoreboard(teamA, teamB)
+            },
             onDismiss = { showDraw = false; viewModel.clearDraw() }
+        )
+    }
+
+    historyTarget?.let { player ->
+        PlayerHistoryDialog(
+            player = player,
+            viewModel = viewModel,
+            onDismiss = { historyTarget = null }
         )
     }
 
@@ -247,6 +308,7 @@ private fun PlayerRow(
     player: PlayerEntity,
     onTogglePresent: () -> Unit,
     onEdit: () -> Unit,
+    onHistory: () -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
@@ -270,6 +332,9 @@ private fun PlayerRow(
                     )
                 }
                 SkillChips(player)
+            }
+            IconButton(onClick = onHistory) {
+                Icon(Icons.Filled.Timeline, contentDescription = "Evolução", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             IconButton(onClick = onEdit) {
                 Icon(Icons.Filled.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
